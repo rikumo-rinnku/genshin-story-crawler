@@ -5,10 +5,26 @@ import json
 import time
 import random
 import re
+import logging
+import os
 from src.core.client import get
 from src.core.storage import is_crawled, mark_crawled, save_text
 from src.core.config_loader import get_channel_id
 from src.core.parser import clean_html_to_text
+
+# ========== 日志配置 ==========
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, "task.log"), encoding='utf-8', mode='a'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 # ========== 1. 获取任务列表 ==========
@@ -20,30 +36,30 @@ def get_task_list():
     url = "https://act-api-takumi-static.mihoyo.com/common/blackboard/ys_obc/v1/home/content/list"
     params = {
         "app_sn": "ys_obc",
-        "channel_id": get_channel_id("task")   # 从配置文件读取任务频道 ID（如 43）
+        "channel_id": get_channel_id("task")
     }
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     try:
         resp = get(url, headers=headers, params=params)
         data = resp.json()
         if data.get("retcode") != 0:
-            print(f"API 错误: {data}")
+            logger.error(f"API 错误: {data}")
             return []
 
-        # 数据路径：data.data.list[0].list（与角色类似，通常第一个分类是“任务”）
         outer_list = data.get("data", {}).get("list", [])
         if not outer_list:
-            print("未找到外层任务列表")
+            logger.warning("未找到外层任务列表")
             return []
-        # 查找 name 为 "任务" 的分类
+
         task_category = None
         for cat in outer_list:
             if cat.get("name") == "任务":
                 task_category = cat
                 break
         if not task_category:
-            print("未找到「任务」分类")
+            logger.warning("未找到「任务」分类")
             return []
+
         items = task_category.get("list", [])
         task_list = []
         for item in items:
@@ -51,7 +67,6 @@ def get_task_list():
             tname = item.get("title")
             ext_str = item.get("ext", "{}")
             if tid and tname:
-                # 解析 ext 获取任务类型、区域、版本号
                 task_type, task_region, task_version = parse_ext_info(ext_str)
                 task_list.append({
                     "id": tid,
@@ -60,18 +75,17 @@ def get_task_list():
                     "region": task_region,
                     "version": task_version
                 })
-        print(f"成功获取 {len(task_list)} 个任务 (频道ID: {params['channel_id']})")
+        logger.info(f"成功获取 {len(task_list)} 个任务 (频道ID: {params['channel_id']})")
         for i, t in enumerate(task_list[:5], 1):
-            print(f"  {i}. {t['name']} (ID: {t['id']})")
+            logger.info(f"  {i}. {t['name']} (ID: {t['id']})")
         return task_list
     except Exception as e:
-        print(f"获取任务列表失败: {e}")
+        logger.exception("获取任务列表失败")
         return []
 
 
 # ========== 辅助解析函数 ==========
 def parse_ext_info(ext_str: str):
-    """从 ext 中提取任务类型、区域、版本号"""
     task_type = ""
     task_region = ""
     task_version = ""
@@ -90,12 +104,11 @@ def parse_ext_info(ext_str: str):
                         task_version = item.split("/")[-1]
                 break
     except Exception:
-        pass
+        logger.warning(f"解析 ext 失败: {ext_str[:100]}...")
     return task_type, task_region, task_version
 
 
 def parse_base_info(components):
-    """解析 base_info 或 rich_base_info 组件，返回键值对文本"""
     if not components:
         return ""
     raw = components[0].get("data", "{}")
@@ -110,12 +123,12 @@ def parse_base_info(components):
                 cleaned = [clean_html_to_text(v) for v in values if v]
                 lines.append(f"{key}：{'；'.join(cleaned)}")
         return "\n".join(lines) if lines else ""
-    except:
+    except Exception:
+        logger.warning("解析 base_info 失败")
         return ""
 
 
 def parse_collapse_panel(components):
-    """解析 collapse_panel 组件，返回 rich_text 纯文本"""
     if not components:
         return ""
     raw = components[0].get("data", "{}")
@@ -123,14 +136,12 @@ def parse_collapse_panel(components):
         info = json.loads(raw)
         html = info.get("rich_text", "")
         return clean_html_to_text(html)
-    except:
+    except Exception:
+        logger.warning("解析 collapse_panel 失败")
         return ""
 
 
 def parse_interactive_dialogue(components):
-    """
-    解析 interactive_dialogue 组件，按顺序提取对话
-    """
     if not components:
         return ""
     raw = components[0].get("data", "{}")
@@ -145,7 +156,6 @@ def parse_interactive_dialogue(components):
             if not root_id or not contents:
                 continue
 
-            # 深度优先遍历
             def traverse(node_id, visited=None):
                 if visited is None:
                     visited = set()
@@ -153,13 +163,12 @@ def parse_interactive_dialogue(components):
                     return
                 visited.add(node_id)
                 node = contents[node_id]
-                dialogue = node.get("dialogue", "")
                 option = node.get("option", "")
-                if dialogue:
-                    all_lines.append(clean_html_to_text(dialogue))
+                dialogue = node.get("dialogue", "")
                 if option:
                     all_lines.append(clean_html_to_text(option))
-                # 遍历子节点
+                if dialogue:
+                    all_lines.append(clean_html_to_text(dialogue))
                 for child_id in child_ids.get(node_id, []):
                     traverse(child_id, visited)
 
@@ -167,13 +176,12 @@ def parse_interactive_dialogue(components):
 
         return "\n".join(all_lines)
     except Exception as e:
-        print(f"解析对话失败: {e}")
+        logger.warning(f"解析 interactive_dialogue 失败: {e}")
         return ""
 
 
 # ========== 任务详情解析 ==========
 def extract_main_info(page):
-    """从 page 中提取主任务信息"""
     info = {
         "id": page.get("id"),
         "name": page.get("name"),
@@ -193,10 +201,6 @@ def extract_main_info(page):
 
 
 def parse_subtasks(page):
-    """
-    从 page 解析子任务列表
-    返回 list of dict: [{"name": "子任务名", "module_ids": [id1, id2, ...]}]
-    """
     template_layout = page.get("template_layout", {})
     tabs = template_layout.get("tab", [])
     modules = page.get("modules", [])
@@ -244,7 +248,6 @@ def parse_subtasks(page):
 
 
 def get_task_detail(task_id: str) -> dict:
-    """请求任务详情 API"""
     url = "https://act-api-takumi-static.mihoyo.com/hoyowiki/genshin/wapi/entry_page"
     params = {
         "app_sn": "ys_obc",
@@ -255,15 +258,12 @@ def get_task_detail(task_id: str) -> dict:
     resp = get(url, headers=headers, params=params)
     data = resp.json()
     if data.get("retcode") != 0:
-        print(f"  API 错误: {data.get('message')}")
+        logger.error(f"API 错误: {data.get('message')}")
         return None
     return data
 
 
 def generate_subtask_content(main_info, subtask, module_dict):
-    """
-    根据子任务包含的模块 ID，生成内容文本
-    """
     lines = []
     lines.append(f"任务名称：{main_info['name']}")
     lines.append(f"任务类型：{main_info['type'] or '未知'}")
@@ -298,6 +298,7 @@ def generate_subtask_content(main_info, subtask, module_dict):
                 lines.append(f"\n【{name}】")
                 lines.append(text)
         else:
+            # 其他类型暂时不处理
             pass
 
     return "\n".join(lines)
@@ -307,25 +308,43 @@ def generate_subtask_content(main_info, subtask, module_dict):
 def run():
     tasks = get_task_list()
     if not tasks:
+        logger.warning("未获取到任务列表，退出")
         return
 
-    test_limit = 20  # 可调整
+    # 统计信息
+    stats = {
+        "total_tasks": len(tasks),
+        "processed": 0,
+        "failed": [],
+        "subtasks_saved": 0,
+        "subtasks_empty": 0,
+        "missing": []  # 记录所有缺失情况
+    }
+
+    test_limit = len(tasks)  # 可调整，建议正式运行时改为 len(tasks)
     for idx, task in enumerate(tasks[:test_limit], start=1):
         task_id = task["id"]
         task_name = task["name"]
-        print(f"[{idx}/{len(tasks)}] 正在处理: {task_name} (ID: {task_id})")
+        logger.info(f"[{idx}/{len(tasks)}] 正在处理: {task_name} (ID: {task_id})")
 
         if is_crawled("task", task_id):
-            print(f"  跳过 (ID {task_id} 已爬取过)。")
+            logger.info(f"  跳过 (ID {task_id} 已爬取过)。")
             continue
 
         detail_data = get_task_detail(task_id)
         if not detail_data:
+            reason = "API 返回 None"
+            logger.error(f"  任务 {task_name} 缺失: {reason}")
+            stats["failed"].append({"id": task_id, "name": task_name, "reason": reason})
+            stats["missing"].append({"id": task_id, "name": task_name, "type": "api_error"})
             continue
 
         page = detail_data.get("data", {}).get("page", {})
         if not page:
-            print("  未找到页面数据")
+            reason = "无页面数据"
+            logger.warning(f"  任务 {task_name} 缺失: {reason}")
+            stats["failed"].append({"id": task_id, "name": task_name, "reason": reason})
+            stats["missing"].append({"id": task_id, "name": task_name, "type": "no_page"})
             continue
 
         main_info = extract_main_info(page)
@@ -334,29 +353,57 @@ def run():
 
         subtasks = parse_subtasks(page)
         if not subtasks:
-            print("  未解析到子任务，跳过")
+            reason = "无子任务"
+            logger.warning(f"  任务 {task_name} 缺失: {reason}")
+            stats["failed"].append({"id": task_id, "name": task_name, "reason": reason})
+            stats["missing"].append({"id": task_id, "name": task_name, "type": "no_subtasks"})
             continue
 
-        print(f"  发现 {len(subtasks)} 个子任务")
+        logger.info(f"  发现 {len(subtasks)} 个子任务")
 
         for subtask in subtasks:
             content = generate_subtask_content(main_info, subtask, module_dict)
             if not content.strip():
-                print(f"    子任务 {subtask['name']} 无内容，跳过")
+                reason = f"子任务 {subtask['name']} 无内容"
+                logger.warning(f"    任务 {task_name} 缺失: {reason}")
+                stats["subtasks_empty"] += 1
+                stats["missing"].append({
+                    "task_id": task_id,
+                    "task_name": task_name,
+                    "subtask_name": subtask["name"],
+                    "type": "empty_content"
+                })
                 continue
 
             safe_main = re.sub(r'[\\/*?:"<>|]', '_', main_info['name'])
             safe_sub = re.sub(r'[\\/*?:"<>|]', '_', subtask['name'])
             filename = f"{safe_main}_{safe_sub}"
             save_text(content, "task", filename, name=filename)
-            print(f"    已保存子任务: {filename}")
+            logger.info(f"    已保存子任务: {filename}")
+            stats["subtasks_saved"] += 1
 
         mark_crawled("task", task_id, task_name)
-        print(f"  任务 {task_name} 处理完成")
+        stats["processed"] += 1
+        logger.info(f"  任务 {task_name} 处理完成")
 
         time.sleep(random.uniform(1, 2))
 
-    print("\n任务模块测试完成！")
+    # 如果存在缺失，在日志中汇总
+    if stats["missing"]:
+        logger.warning(f"本次运行共有 {len(stats['missing'])} 处缺失，详情见报告文件")
+    else:
+        logger.info("所有任务均已完整爬取，无缺失")
+
+    # 生成爬取报告
+    report_path = os.path.join(LOG_DIR, "crawl_report.json")
+    try:
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=2, ensure_ascii=False)
+        logger.info(f"爬取报告已保存至 {report_path}")
+    except Exception as e:
+        logger.error(f"保存报告失败: {e}")
+
+    logger.info("任务模块测试完成！")
 
 
 if __name__ == "__main__":

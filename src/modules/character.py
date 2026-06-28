@@ -4,10 +4,35 @@
 import json
 import time
 import random
+import logging
+import os
 from src.core.client import get
 from src.core.parser import clean_html_to_text
 from src.core.storage import is_crawled, mark_crawled, save_text
 from src.core.config_loader import get_channel_id
+
+# ========== 日志配置 ==========
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, "character.log"), encoding='utf-8', mode='a'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+# ========== 工具函数：从 modules 中查找特定模块 ==========
+def find_module(modules, name):
+    """在 modules 列表中查找第一个名称匹配的模块，返回该模块或 None"""
+    for module in modules:
+        if module.get("name") == name:
+            return module
+    return None
 
 
 # ========== 1. 获取角色列表 ==========
@@ -26,22 +51,23 @@ def get_character_list():
         resp = get(url, headers=headers, params=params)
         data = resp.json()
         if data.get("retcode") != 0:
-            print(f"API 错误: {data}")
+            logger.error(f"API 错误: {data}")
             return []
 
         outer_list = data.get("data", {}).get("list", [])
         if not outer_list:
-            print("未找到外层角色列表")
+            logger.warning("未找到外层角色列表")
             return []
-        # 查找 name 为 "角色" 的分类（更健壮）
+
         role_category = None
         for cat in outer_list:
             if cat.get("name") == "角色":
                 role_category = cat
                 break
         if not role_category:
-            print("未找到「角色」分类")
+            logger.warning("未找到「角色」分类")
             return []
+
         items = role_category.get("list", [])
         character_list = []
         for item in items:
@@ -49,12 +75,12 @@ def get_character_list():
             cname = item.get("title")
             if cid and cname:
                 character_list.append({"id": cid, "name": cname})
-        print(f"成功获取 {len(character_list)} 个角色 (频道ID: {params['channel_id']})")
+        logger.info(f"成功获取 {len(character_list)} 个角色 (频道ID: {params['channel_id']})")
         for i, ch in enumerate(character_list[:5], 1):
-            print(f"  {i}. {ch['name']} (ID: {ch['id']})")
+            logger.info(f"  {i}. {ch['name']} (ID: {ch['id']})")
         return character_list
     except Exception as e:
-        print(f"获取角色列表失败: {e}")
+        logger.exception("获取角色列表失败")
         return []
 
 
@@ -86,7 +112,7 @@ def parse_basic_info(components):
                 lines.append(f"{key}{val}")
         return "\n".join(lines)
     except json.JSONDecodeError as e:
-        print(f"  解析基础信息 JSON 失败: {e}")
+        logger.warning(f"解析基础信息 JSON 失败: {e}")
         return ""
 
 
@@ -105,8 +131,9 @@ def parse_collapse_panel_rich_text(components):
             return ""
         return clean_html_to_text(html_content)
     except json.JSONDecodeError as e:
-        print(f"  解析 rich_text 模块失败: {e}")
+        logger.warning(f"解析 rich_text 模块失败: {e}")
         return ""
+
 
 def parse_voice_show(components):
     """
@@ -140,8 +167,9 @@ def parse_voice_show(components):
                     lines.append(f"{name}：{content}")
         return "\n".join(lines)
     except json.JSONDecodeError as e:
-        print(f"  解析配音展示 JSON 失败: {e}")
+        logger.warning(f"解析配音展示 JSON 失败: {e}")
         return ""
+
 
 def parse_role_debut(components):
     """
@@ -156,7 +184,6 @@ def parse_role_debut(components):
         items = data.get("list", [])
         for item in items:
             tab_name = item.get("tab_name", "")
-            # 匹配以“角色登场”结尾的条目
             if tab_name.endswith("角色登场"):
                 attrs = item.get("attr", [])
                 if attrs:
@@ -164,12 +191,12 @@ def parse_role_debut(components):
                     if values:
                         html = "\n".join(values)
                         text = clean_html_to_text(html)
-                        # 关键修改：加上标题和换行
                         return f"{tab_name}\n{text}"
         return ""
     except json.JSONDecodeError as e:
-        print(f"  解析角色登场 JSON 失败: {e}")
+        logger.warning(f"解析角色登场 JSON 失败: {e}")
         return ""
+
 
 # ========== 3. 获取单个角色的完整剧情文本 ==========
 def get_character_story(character_id: str, character_name: str) -> str:
@@ -191,7 +218,7 @@ def get_character_story(character_id: str, character_name: str) -> str:
         resp = get(url, headers=headers, params=params)
         data = resp.json()
         if data.get("retcode") != 0:
-            print(f"  API 错误: {data.get('message')}")
+            logger.error(f"API 错误: {data.get('message')}")
             return f"【待补充】角色 {character_name} (ID: {character_id}) 的 API 请求失败，请手动检查。"
 
         modules = data.get("data", {}).get("page", {}).get("modules", [])
@@ -199,17 +226,14 @@ def get_character_story(character_id: str, character_name: str) -> str:
         story_parts = []
 
         # ---------- 1. 基础信息 ----------
-        basic_found = False
-        for module in modules:
-            if module.get("name") == "基础信息":
-                basic_text = parse_basic_info(module.get("components", []))
-                if basic_text:
-                    story_parts.append(basic_text)
-                    basic_found = True
-                else:
-                    story_parts.append("【缺失】基础信息（内容为空）")
-                break
-        if not basic_found:
+        basic_module = find_module(modules, "基础信息")
+        if basic_module:
+            basic_text = parse_basic_info(basic_module.get("components", []))
+            if basic_text:
+                story_parts.append(basic_text)
+            else:
+                story_parts.append("【缺失】基础信息（内容为空）")
+        else:
             story_parts.append("【缺失】基础信息模块")
 
         # ---------- 2. 角色描述分组 ----------
@@ -235,7 +259,7 @@ def get_character_story(character_id: str, character_name: str) -> str:
             for mid in target_module_ids:
                 module = module_dict.get(mid)
                 if not module:
-                    print(f"  警告：模块 ID {mid} 在 modules 中未找到")
+                    logger.warning(f"模块 ID {mid} 在 modules 中未找到")
                     continue
                 text = parse_collapse_panel_rich_text(module.get("components", []))
                 if text:
@@ -249,31 +273,25 @@ def get_character_story(character_id: str, character_name: str) -> str:
                 story_parts.append("【缺失】角色描述分组（所有子模块均无有效内容）")
 
         # ---------- 3. 配音展示 ----------
-        voice_found = False
-        for module in modules:
-            if module.get("name") == "配音展示":
-                voice_text = parse_voice_show(module.get("components", []))
-                if voice_text:
-                    story_parts.append(voice_text)
-                    voice_found = True
-                else:
-                    story_parts.append("【缺失】配音展示（内容为空）")
-                break
-        if not voice_found:
+        voice_module = find_module(modules, "配音展示")
+        if voice_module:
+            voice_text = parse_voice_show(voice_module.get("components", []))
+            if voice_text:
+                story_parts.append(voice_text)
+            else:
+                story_parts.append("【缺失】配音展示（内容为空）")
+        else:
             story_parts.append("【缺失】配音展示模块")
 
         # ---------- 4. 角色宣发时间轴（角色登场） ----------
-        debut_found = False
-        for module in modules:
-            if module.get("name") == "角色宣发时间轴":
-                debut_text = parse_role_debut(module.get("components", []))
-                if debut_text:
-                    story_parts.append(debut_text)
-                    debut_found = True
-                else:
-                    story_parts.append("【缺失】角色登场（内容为空）")
-                break
-        if not debut_found:
+        debut_module = find_module(modules, "角色宣发时间轴")
+        if debut_module:
+            debut_text = parse_role_debut(debut_module.get("components", []))
+            if debut_text:
+                story_parts.append(debut_text)
+            else:
+                story_parts.append("【缺失】角色登场（内容为空）")
+        else:
             story_parts.append("【缺失】角色登场模块")
 
         if not story_parts:
@@ -281,9 +299,9 @@ def get_character_story(character_id: str, character_name: str) -> str:
 
         return "\n\n".join(story_parts)
     except Exception as e:
-        print(f"  请求详情失败: {e}")
+        logger.exception(f"请求角色 {character_name} 详情失败")
         return f"【待补充】角色 {character_name} (ID: {character_id}) 的请求异常: {e}"
-    
+
 
 # ========== 旅行者特殊处理 ==========
 def fetch_traveler_story():
@@ -292,20 +310,16 @@ def fetch_traveler_story():
     - 基础信息和角色描述：从任意一个“旅行者·X”条目获取（例如第一个）
     - 配音展示：从特殊 ID 505527 获取
     """
-    # 1. 获取所有角色列表，从中筛选旅行者条目
     all_chars = get_character_list()
     traveler_items = [ch for ch in all_chars if ch["name"].startswith("旅行者·")]
     if not traveler_items:
-        print("未找到旅行者条目，跳过特殊处理")
+        logger.warning("未找到旅行者条目，跳过特殊处理")
         return None
 
-    # 取第一个旅行者作为基础信息来源
     sample = traveler_items[0]
-    print(f"使用 {sample['name']} (ID: {sample['id']}) 获取基础信息和角色描述")
+    logger.info(f"使用 {sample['name']} (ID: {sample['id']}) 获取基础信息和角色描述")
 
-    # 获取基础信息和角色描述（调用通用函数，但会包含配音展示缺失标记，后面我们会覆盖）
     story_sample = get_character_story(sample["id"], sample["name"])
-    # 拆分模块，只保留“基础信息”和角色描述相关的部分（例如“更多描述”、“角色详细”、“角色故事1”等）
     parts = story_sample.split("\n\n")
     basic_info = ""
     role_desc_parts = []
@@ -316,17 +330,14 @@ def fetch_traveler_story():
             role_desc_parts.append(part)
     role_desc = "\n\n".join(role_desc_parts)
 
-    # 2. 从特殊 ID 获取配音展示
-    print("从特殊 ID 505527 获取配音展示")
+    logger.info("从特殊 ID 505527 获取配音展示")
     voice_story = get_character_story("505527", "旅行者")
-    # 提取“配音展示”模块
     voice_part = ""
     for part in voice_story.split("\n\n"):
         if part.startswith("配音展示"):
             voice_part = part
             break
 
-    # 合并最终内容（顺序：基础信息 → 角色描述 → 配音展示）
     final_parts = []
     if basic_info:
         final_parts.append(basic_info)
@@ -338,10 +349,12 @@ def fetch_traveler_story():
         return None
     return "\n\n".join(final_parts)
 
-# ========== 修改后的主运行逻辑 ==========
+
+# ========== 主运行逻辑 ==========
 def run():
     characters = get_character_list()
     if not characters:
+        logger.warning("未获取到角色列表，退出")
         return
 
     # 分离普通角色和旅行者
@@ -353,51 +366,76 @@ def run():
         else:
             normal_chars.append(ch)
 
+    # 统计信息（可选）
+    stats = {
+        "total": len(characters),
+        "normal": len(normal_chars),
+        "traveler": len(traveler_chars),
+        "processed": 0,
+        "failed": [],
+        "missing": []
+    }
+
     # 1. 爬取普通角色
-    test_limit = len(normal_chars)  # 正式运行时爬取所有
-    for idx, char in enumerate(normal_chars[:test_limit], start=1):
+    logger.info(f"开始爬取 {len(normal_chars)} 个普通角色")
+    for idx, char in enumerate(normal_chars, start=1):
         character_id = char["id"]
         character_name = char["name"]
-        print(f"[{idx}/{len(normal_chars)}] 正在处理: {character_name} (ID: {character_id})")
+        logger.info(f"[{idx}/{len(normal_chars)}] 正在处理: {character_name} (ID: {character_id})")
 
         if is_crawled("character", character_id):
-            print(f"  跳过 (ID {character_id} 已爬取过)。")
+            logger.info(f"  跳过 (ID {character_id} 已爬取过)。")
             continue
 
         story = get_character_story(character_id, character_name)
         if story:
+            # 检查是否有缺失标记
             if "【缺失】" in story or story.startswith("【待补充】"):
                 filename = f"[缺失]{character_name}"
-                print(f"  生成占位文档，文件名: {filename}")
+                logger.warning(f"  生成占位文档，文件名: {filename}")
+                stats["missing"].append({"id": character_id, "name": character_name})
             else:
                 filename = character_name
             save_text(story, "character", filename, name=character_name)
             mark_crawled("character", character_id, character_name)
+            stats["processed"] += 1
         else:
-            print(f"  未获取到剧情，跳过标记。")
+            logger.error(f"  未获取到剧情，跳过标记。")
+            stats["failed"].append({"id": character_id, "name": character_name})
 
         time.sleep(random.uniform(1, 2))
 
-    # 2. 单独处理旅行者（如果存在）
+    # 2. 单独处理旅行者
     if traveler_chars:
-        print("\n开始处理旅行者（主角）...")
+        logger.info(f"开始处理旅行者（共 {len(traveler_chars)} 个形态）")
         traveler_story = fetch_traveler_story()
+        traveler_id = "traveler_main"
         if traveler_story:
-            # 保存为“旅行者”文件，ID 使用固定字符串 "traveler_main"
-            traveler_id = "traveler_main"
             if not is_crawled("character", traveler_id):
                 save_text(traveler_story, "character", "旅行者", name="旅行者")
                 mark_crawled("character", traveler_id, "旅行者")
-                print("旅行者剧情保存成功")
+                logger.info("旅行者剧情保存成功")
+                stats["processed"] += 1
             else:
-                print("旅行者已爬取过，跳过")
+                logger.info("旅行者已爬取过，跳过")
         else:
-            print("未能获取旅行者剧情，生成占位文档")
+            logger.warning("未能获取旅行者剧情，生成占位文档")
             placeholder = "【待补充】旅行者剧情获取失败"
             save_text(placeholder, "character", "旅行者", name="旅行者")
-            mark_crawled("character", "traveler_main", "旅行者")
+            mark_crawled("character", traveler_id, "旅行者")
+            stats["missing"].append({"id": traveler_id, "name": "旅行者"})
 
-    print("\n角色模块测试完成！")
-    
+    # 生成报告
+    report_path = os.path.join(LOG_DIR, "character_report.json")
+    try:
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=2, ensure_ascii=False)
+        logger.info(f"爬取报告已保存至 {report_path}")
+    except Exception as e:
+        logger.error(f"保存报告失败: {e}")
+
+    logger.info("角色模块测试完成！")
+
+
 if __name__ == "__main__":
     run()
