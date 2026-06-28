@@ -1,0 +1,19 @@
+{
+  "character": {
+    "channel_id": 25,
+    "name": "角色",
+    "description": "角色图鉴",
+    "enabled": true
+  },
+  "enemy": {
+    "channel_id": 6,
+    "name": "敌人",
+    "description": "敌人/怪物图鉴",
+    "enabled": true
+  },
+  "task": {
+    "channel_id": 43,
+    "name": "任务",
+    "enabled": true
+}
+}

@@ -1,0 +1,13 @@
+[project]
+name = "genshin-story-crawler"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "lxml>=6.1.1",
+    "playwright>=1.60.0",
+    "requests>=2.34.2",
+    "tenacity>=9.1.4",
+]
