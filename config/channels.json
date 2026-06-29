@@ -5,15 +5,17 @@
     "description": "角色图鉴",
     "enabled": true
   },
-  "enemy": {
-    "channel_id": 6,
-    "name": "敌人",
-    "description": "敌人/怪物图鉴",
-    "enabled": true
-  },
   "task": {
     "channel_id": 43,
     "name": "任务",
     "enabled": true
+  },
+  "anecdote": {
+    "channel_id": 261,
+    "name": "角色逸闻"
+  },
+  "weapon": {
+    "channel_id": 5,
+    "name": "武器"
 }
 }
