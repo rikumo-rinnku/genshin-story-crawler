@@ -18,6 +18,7 @@ from src.core.client import get
 from src.core.parser import clean_html_to_text
 from src.core.config_loader import get_channel_id
 
+
 # ========== 日志配置 ==========
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)

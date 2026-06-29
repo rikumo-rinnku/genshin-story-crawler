@@ -17,5 +17,13 @@
   "weapon": {
     "channel_id": 5,
     "name": "武器"
+  },
+  "artifact": {
+    "channel_id": 218,
+    "name": "圣遗物"
+  },
+  "organization": {
+    "channel_id": 255,
+    "name": "组织"
 }
 }
