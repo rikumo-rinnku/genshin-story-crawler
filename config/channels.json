@@ -25,5 +25,9 @@
   "organization": {
     "channel_id": 255,
     "name": "组织"
-}
+  },
+  "enemy": {
+    "channel_id": 6,
+    "name": "敌人"
+  }
 }
