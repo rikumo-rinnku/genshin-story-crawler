@@ -33,5 +33,9 @@
   "map_text": {
     "channel_id": 251,
     "name": "地图文本"
+  },
+  "food": {
+    "channel_id": 21,
+    "name": "食物"
   }
 }
