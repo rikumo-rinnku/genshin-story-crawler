@@ -29,5 +29,9 @@
   "enemy": {
     "channel_id": 6,
     "name": "敌人"
+  },
+  "map_text": {
+    "channel_id": 251,
+    "name": "地图文本"
   }
 }
