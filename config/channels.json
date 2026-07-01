@@ -41,5 +41,13 @@
   "item": {
     "channel_id": 13,
     "name": "背包"
+  },
+  "animal": {
+    "channel_id": 49,
+    "name": "动物"
+  },
+  "book": {
+    "channel_id": 68,
+    "name": "书籍"
 }
 }

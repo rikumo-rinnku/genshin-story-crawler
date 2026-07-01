@@ -37,3 +37,6 @@ Thumbs.db
 
 # 增量记录文件（包含已爬取ID）
 config/crawled.json
+
+#临时文件
+temp/
