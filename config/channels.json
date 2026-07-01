@@ -37,5 +37,9 @@
   "food": {
     "channel_id": 21,
     "name": "食物"
-  }
+  },
+  "item": {
+    "channel_id": 13,
+    "name": "背包"
+}
 }
