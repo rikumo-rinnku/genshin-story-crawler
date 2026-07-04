@@ -66,5 +66,12 @@
 "furnishing": {
     "channel_id": 130,
     "name": "洞天"
+},
+"phantom_theater": {
+    "channel_id": 249,
+    "name": "幻想真境剧诗"
+},
+"namecard": {
+    "name": "名片"
 }
 }
