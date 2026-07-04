@@ -62,5 +62,9 @@
     "domain": {
     "channel_id": 54,
     "name": "秘境"
+},
+"furnishing": {
+    "channel_id": 130,
+    "name": "洞天"
 }
 }
