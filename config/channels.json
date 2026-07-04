@@ -54,4 +54,13 @@
         "channel_id": 55,
         "name": "冒险家协会"
     }
+    ,
+   "npc": {
+        "channel_id": 20,
+        "name": "NPC&商店"
+    },
+    "domain": {
+    "channel_id": 54,
+    "name": "秘境"
+}
 }

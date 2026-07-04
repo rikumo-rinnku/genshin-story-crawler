@@ -233,6 +233,7 @@ def parse_commission_detail(page_data: Dict) -> Dict:
                         else:
                             result[key] = text
 
+
             elif comp_id == "multi_table":
                 # 表格：提取所有表格的文本
                 tables = data.get("tables", [])
@@ -427,7 +428,7 @@ def run():
         "skipped": 0
     }
 
-    test_limit = 10  # 0 表示全量
+    test_limit = 0  # 0 表示全量
 
     for idx, c in enumerate(commissions[:test_limit] if test_limit else commissions, start=1):
         cid = c["id"]
