@@ -49,5 +49,9 @@
   "book": {
     "channel_id": 68,
     "name": "书籍"
-}
+  },
+   "commission": {
+        "channel_id": 55,
+        "name": "冒险家协会"
+    }
 }
