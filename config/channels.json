@@ -50,28 +50,31 @@
     "channel_id": 68,
     "name": "书籍"
   },
-   "commission": {
-        "channel_id": 55,
-        "name": "冒险家协会"
-    }
-    ,
-   "npc": {
-        "channel_id": 20,
-        "name": "NPC&商店"
-    },
-    "domain": {
+  "commission": {
+    "channel_id": 55,
+    "name": "冒险家协会"
+  },
+  "npc": {
+    "channel_id": 20,
+    "name": "NPC&商店"
+  },
+  "domain": {
     "channel_id": 54,
     "name": "秘境"
-},
-"furnishing": {
+  },
+  "furnishing": {
     "channel_id": 130,
     "name": "洞天"
-},
-"phantom_theater": {
+  },
+  "phantom_theater": {
     "channel_id": 249,
     "name": "幻想真境剧诗"
-},
-"namecard": {
+  },
+  "namecard": {
     "name": "名片"
+  },
+  "outfit": {
+    "channel_id": 211,
+    "name": "装扮"
 }
 }
