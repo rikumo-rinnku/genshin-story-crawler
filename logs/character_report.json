@@ -1,21 +1,8 @@
 {
-  "total": 130,
-  "normal": 118,
+  "total": 132,
+  "normal": 120,
   "traveler": 12,
-  "processed": 3,
+  "processed": 0,
   "failed": [],
-  "missing": [
-    {
-      "id": "508841",
-      "name": "桑多涅【预告】"
-    },
-    {
-      "id": "506960",
-      "name": "奇偶·男性"
-    },
-    {
-      "id": "506961",
-      "name": "奇偶·女性"
-    }
-  ]
+  "missing": []
 }
