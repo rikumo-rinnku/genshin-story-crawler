@@ -494,6 +494,7 @@ def run():
         logger.error(f"保存报告失败: {e}")
 
     logger.info("背包物品模块爬取完成！")
+    return stats
 
 
 if __name__ == "__main__":

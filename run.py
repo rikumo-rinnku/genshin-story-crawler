@@ -13,8 +13,6 @@ from typing import Dict, List, Tuple
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.layout import Layout
-from rich.live import Live
 from rich.prompt import Confirm
 from rich.progress import (
     Progress,
@@ -24,7 +22,10 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.text import Text
+from src.core.runtime import LOG_DIR, configure_logging, save_module_report
+
+# 必须在导入模块前完成配置，避免各模块的历史 basicConfig 抢先接管日志。
+configure_logging()
 
 # 导入所有模块
 from src.modules import (
@@ -89,7 +90,16 @@ def run_module(module_name: str, module_obj, module_key: str) -> Dict:
 
     try:
         if hasattr(module_obj, "run"):
-            module_obj.run()
+            module_stats = module_obj.run()
+            result["stats"] = module_stats
+            if isinstance(module_stats, dict):
+                report_path = save_module_report(module_key, module_stats)
+                result["report_path"] = str(report_path)
+                if module_stats.get("failed"):
+                    result["status"] = "partial"
+            else:
+                result["status"] = "failed"
+                result["error"] = "模块未返回运行统计（可能未获取到列表）"
         else:
             result["status"] = "failed"
             result["error"] = "模块没有 run 函数"
@@ -162,7 +172,8 @@ def show_summary_report(results: List[Dict], total_time: float):
     显示运行汇总报告。
     """
     success_count = sum(1 for r in results if r["status"] == "success")
-    fail_count = len(results) - success_count
+    partial_count = sum(1 for r in results if r["status"] == "partial")
+    fail_count = sum(1 for r in results if r["status"] == "failed")
 
     console.clear()
     console.print(
@@ -180,7 +191,7 @@ def show_summary_report(results: List[Dict], total_time: float):
     table.add_column("错误信息", style="red")
 
     for r in results:
-        status = "✅ 成功" if r["status"] == "success" else "❌ 失败"
+        status = {"success": "✅ 成功", "partial": "⚠️ 部分完成", "failed": "❌ 失败"}[r["status"]]
         error = r["error"][:50] + "..." if r["error"] and len(r["error"]) > 50 else (r["error"] or "")
         table.add_row(
             r["name"],
@@ -195,6 +206,7 @@ def show_summary_report(results: List[Dict], total_time: float):
     console.print(
         Panel(
             f"[bold]成功: {success_count}/{len(results)}[/bold]  "
+            f"[bold yellow]部分完成: {partial_count}/{len(results)}[/bold yellow]  "
             f"[bold red]失败: {fail_count}/{len(results)}[/bold red]  "
             f"[bold cyan]总耗时: {total_time:.1f}s[/bold cyan]"
             + (f"\n\n[red]失败模块: {', '.join(r['name'] for r in results if r['status'] == 'failed')}[/red]" if fail_count > 0 else ""),
@@ -202,8 +214,8 @@ def show_summary_report(results: List[Dict], total_time: float):
         )
     )
 
-    console.print(f"\n[dim]详细报告: logs/run_all_report.json[/dim]")
-    console.print("[dim]完整日志: logs/run_all.log[/dim]")
+    console.print(f"\n[dim]详细报告: {LOG_DIR / 'run_all_report.json'}[/dim]")
+    console.print(f"[dim]完整日志: {LOG_DIR / 'run_all.log'}[/dim]")
 
 
 def save_report(results: List[Dict]):
@@ -220,9 +232,8 @@ def save_report(results: List[Dict]):
         "details": results,
     }
 
-    import os
-    os.makedirs("logs", exist_ok=True)
-    with open("logs/run_all_report.json", "w", encoding="utf-8") as f:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    with open(LOG_DIR / "run_all_report.json", "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
 

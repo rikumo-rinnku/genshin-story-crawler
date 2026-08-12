@@ -435,6 +435,7 @@ def run():
         logger.error(f"保存报告失败: {e}")
 
     logger.info("角色模块测试完成！")
+    return stats
 
 
 if __name__ == "__main__":

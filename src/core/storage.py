@@ -1,8 +1,10 @@
 import json
-import os
 import re
+from pathlib import Path
 
-CRAWLED_FILE = "config/crawled.json"
+from src.core.runtime import CONFIG_DIR, DATA_DIR
+
+CRAWLED_FILE = CONFIG_DIR / "crawled.json"
 
 def sanitize_filename(name: str) -> str:
     """替换 Windows 文件名中的非法字符为下划线"""
@@ -11,7 +13,7 @@ def sanitize_filename(name: str) -> str:
 
 def load_crawled():
     """加载 crawled.json，返回 { module: { id: name, ... } }"""
-    if os.path.exists(CRAWLED_FILE):
+    if CRAWLED_FILE.exists():
         with open(CRAWLED_FILE, 'r', encoding='utf-8') as f:
             content = f.read().strip()
             if not content:
@@ -26,6 +28,7 @@ def load_crawled():
     return {}
 
 def save_crawled(data):
+    CRAWLED_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(CRAWLED_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -50,15 +53,15 @@ def get_crawled_name(module, entry_id):
     return data.get(module, {}).get(entry_id)
 
 def save_text(content, module, entry_id, name=None):
-    # 清理文件名中的非法字符
+    """以统一格式保存文本，并返回文件路径。"""
     safe_entry = sanitize_filename(entry_id)
-    dir_path = os.path.join("data", "cleaned", module)
-    os.makedirs(dir_path, exist_ok=True)
-    file_path = os.path.join(dir_path, f"{safe_entry}.txt")
+    dir_path = DATA_DIR / module
+    dir_path.mkdir(parents=True, exist_ok=True)
+    file_path = dir_path / f"{safe_entry}.txt"
     if name:
         full_content = f"# {name}\n\n{content}"
     else:
         full_content = content
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(full_content)
-    print(f"保存文本: {file_path}")
+    return file_path
