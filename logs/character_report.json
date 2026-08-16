@@ -1,8 +1,29 @@
 {
-  "total": 132,
-  "normal": 120,
-  "traveler": 12,
-  "processed": 0,
+  "module": "character",
+  "run_time": "2026-08-16T16:13:18.253226",
+  "total": 134,
+  "processed": 121,
+  "skipped": 0,
   "failed": [],
-  "missing": []
+  "details": {
+    "total": 134,
+    "normal": 120,
+    "traveler": 14,
+    "processed": 121,
+    "failed": [],
+    "missing": [
+      {
+        "id": "506960",
+        "name": "奇偶·男性"
+      },
+      {
+        "id": "506961",
+        "name": "奇偶·女性"
+      },
+      {
+        "id": "2123",
+        "name": "神里绫华"
+      }
+    ]
+  }
 }
