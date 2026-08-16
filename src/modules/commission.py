@@ -16,6 +16,7 @@ from src.core.client import get
 from src.core.parser import clean_html_to_text
 from src.core.config_loader import get_channel_id
 from src.core.storage import is_crawled, mark_crawled
+from src.core.dataset import save_document
 
 # ========== 日志配置 ==========
 LOG_DIR = "logs"
@@ -389,15 +390,7 @@ def process_commission(commission: Dict, output_dir="data/cleaned/commission") -
             return False
 
         # 创建输出目录
-        os.makedirs(output_dir, exist_ok=True)
-
-        # 生成安全文件名
-        safe_name = safe_filename(cname)
-        filepath = os.path.join(output_dir, f"{safe_name}.txt")
-
-        # 写入文件
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
+        save_document(content, "commission", cid, cname)
         logger.info(f"  保存委托: {cname}")
         return True
 

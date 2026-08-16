@@ -9,6 +9,7 @@
 """
 
 import json
+import hashlib
 import re
 import time
 import random
@@ -17,6 +18,7 @@ import os
 from src.core.client import get
 from src.core.parser import clean_html_to_text
 from src.core.config_loader import get_channel_id
+from src.core.dataset import save_document
 
 
 # ========== 日志配置 ==========
@@ -97,7 +99,7 @@ def safe_filename(name):
     """
     清洗非法字符，生成安全的文件名。
 
-    Windows 文件系统不允许以下字符：\ / : * ? " < > |
+    Windows 文件系统不允许以下字符：\\ / : * ? " < > |
     将它们统一替换为下划线。
 
     Args:
@@ -358,9 +360,6 @@ def process_character(character_id, character_name, output_dir="data/cleaned/ane
             filepath = os.path.join(output_dir, filename)
 
             # 增量检查：文件已存在则跳过
-            if os.path.exists(filepath):
-                logger.debug(f"  内容已存在，跳过: {filename}")
-                continue
 
             # 构建文件内容
             content_lines = []
@@ -372,8 +371,14 @@ def process_character(character_id, character_name, output_dir="data/cleaned/ane
                 content_lines.append(item["dialogue"])
             content = "\n".join(content_lines)
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(content)
+            section_id = hashlib.sha256(title.encode("utf-8")).hexdigest()[:16]
+            save_document(
+                content,
+                "character_anecdote",
+                character_id,
+                title,
+                section_id=section_id,
+            )
             logger.info(f"  保存: {filename}")
             saved_count += 1
 

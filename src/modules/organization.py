@@ -16,6 +16,7 @@ from src.core.client import get
 from src.core.parser import clean_html_to_text
 from src.core.config_loader import get_channel_id
 from src.core.storage import is_crawled, mark_crawled
+from src.core.dataset import save_document
 
 # ========== 日志配置 ==========
 LOG_DIR = "logs"
@@ -383,16 +384,7 @@ def process_organization(org, output_dir="data/cleaned/organization"):
             logger.info(f"组织 {org_name} 生成内容为空")
             return False
 
-        # 创建输出目录（如果不存在）
-        os.makedirs(output_dir, exist_ok=True)
-
-        # 生成安全文件名（替换非法字符）
-        safe_name = safe_filename(org_name)
-        filepath = os.path.join(output_dir, f"{safe_name}.txt")
-
-        # 写入文件
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
+        save_document(content, "organization", org_id, org_name)
         logger.info(f"  保存组织: {org_name}")
         return True
 

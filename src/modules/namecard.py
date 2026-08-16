@@ -19,6 +19,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.core.storage import is_crawled, mark_crawled
+from src.core.dataset import save_document
 
 # ========== 日志配置 ==========
 LOG_DIR = "logs"
@@ -239,15 +240,7 @@ def process_namecard(namecard: Dict, output_dir="data/cleaned/namecard") -> bool
         return False
 
     # 创建输出目录
-    os.makedirs(output_dir, exist_ok=True)
-
-    # 生成安全文件名
-    safe_name = safe_filename(name)
-    filepath = os.path.join(output_dir, f"{safe_name}.txt")
-
-    # 写入文件
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(content)
+    save_document(content, "namecard", pageid, name, source_type="third_party_wiki")
     logger.info(f"  保存名片: {name}")
     return True
 

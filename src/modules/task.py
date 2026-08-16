@@ -9,6 +9,7 @@ import logging
 import os
 from src.core.client import get
 from src.core.storage import is_crawled, mark_crawled, save_text
+from src.core.dataset import save_document
 from src.core.config_loader import get_channel_id
 from src.core.parser import clean_html_to_text
 
@@ -375,11 +376,9 @@ def run():
                 })
                 continue
 
-            safe_main = re.sub(r'[\\/*?:"<>|]', '_', main_info['name'])
-            safe_sub = re.sub(r'[\\/*?:"<>|]', '_', subtask['name'])
-            filename = f"{safe_main}_{safe_sub}"
-            save_text(content, "task", filename, name=filename)
-            logger.info(f"    已保存子任务: {filename}")
+            section_id = str(subtask["group_id"])
+            save_document(content, "task", task_id, subtask["name"], section_id=section_id)
+            logger.info(f"    已保存子任务: {task_id}__{section_id}")
             stats["subtasks_saved"] += 1
 
         mark_crawled("task", task_id, task_name)

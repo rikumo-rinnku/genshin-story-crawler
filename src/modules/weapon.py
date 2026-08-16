@@ -13,6 +13,7 @@ from src.core.client import get
 from src.core.parser import clean_html_to_text
 from src.core.config_loader import get_channel_id
 from src.core.storage import is_crawled, mark_crawled  # 导入增量管理函数
+from src.core.dataset import save_document
 
 # ========== 日志配置 ==========
 LOG_DIR = "logs"
@@ -227,12 +228,6 @@ def process_weapon(weapon_id, weapon_name, output_dir="data/cleaned/weapon"):
             logger.info(f"武器 {weapon_name} 没有故事或技能描述，跳过")
             return False
 
-        # 创建输出目录
-        os.makedirs(output_dir, exist_ok=True)
-
-        safe_name = safe_filename(weapon_name)
-        filepath = os.path.join(output_dir, f"{safe_name}.txt")
-
         # 构建内容
         content_lines = []
         content_lines.append(f"武器名称：{detail['name'] or weapon_name}")
@@ -253,8 +248,7 @@ def process_weapon(weapon_id, weapon_name, output_dir="data/cleaned/weapon"):
             content_lines.append(detail["story"])
 
         content = "\n".join(content_lines)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
+        save_document(content, "weapon", weapon_id, weapon_name)
         logger.info(f"  保存武器: {weapon_name}")
         return True
 

@@ -8,7 +8,8 @@ import logging
 import os
 from src.core.client import get
 from src.core.parser import clean_html_to_text
-from src.core.storage import is_crawled, mark_crawled, save_text
+from src.core.storage import is_crawled, mark_crawled
+from src.core.dataset import save_document
 from src.core.config_loader import get_channel_id
 
 # ========== 日志配置 ==========
@@ -394,9 +395,7 @@ def run():
                 filename = f"[缺失]{character_name}"
                 logger.warning(f"  生成占位文档，文件名: {filename}")
                 stats["missing"].append({"id": character_id, "name": character_name})
-            else:
-                filename = character_name
-            save_text(story, "character", filename, name=character_name)
+            save_document(story, "character", character_id, character_name)
             mark_crawled("character", character_id, character_name)
             stats["processed"] += 1
         else:
@@ -412,7 +411,7 @@ def run():
         traveler_id = "traveler_main"
         if traveler_story:
             if not is_crawled("character", traveler_id):
-                save_text(traveler_story, "character", "旅行者", name="旅行者")
+                save_document(traveler_story, "character", traveler_id, "旅行者")
                 mark_crawled("character", traveler_id, "旅行者")
                 logger.info("旅行者剧情保存成功")
                 stats["processed"] += 1
@@ -421,7 +420,7 @@ def run():
         else:
             logger.warning("未能获取旅行者剧情，生成占位文档")
             placeholder = "【待补充】旅行者剧情获取失败"
-            save_text(placeholder, "character", "旅行者", name="旅行者")
+            save_document(placeholder, "character", traveler_id, "旅行者")
             mark_crawled("character", traveler_id, "旅行者")
             stats["missing"].append({"id": traveler_id, "name": "旅行者"})
 
