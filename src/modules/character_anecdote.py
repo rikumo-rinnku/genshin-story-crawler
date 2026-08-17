@@ -379,7 +379,7 @@ def process_character(character_id, character_name, output_dir="data/cleaned/ane
                 title,
                 section_id=section_id,
             )
-            logger.info(f"  保存: {filename}")
+            logger.info(f"  保存角色逸闻: {character_id}__{section_id}")
             saved_count += 1
 
         if saved_count:

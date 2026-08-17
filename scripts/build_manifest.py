@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sqlite3
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "cleaned"
 CRAWLED = ROOT / "config" / "crawled.json"
+MANIFEST_DB = ROOT / "data" / "manifest.sqlite3"
 DEFAULT_OUTPUT = ROOT / "data" / "manifest.jsonl"
 
 
@@ -23,6 +25,17 @@ def load_ids_by_title() -> dict[str, dict[str, list[str]]]:
             for entry_id, title in entries.items():
                 by_title[str(title)].append(str(entry_id))
         result[module] = by_title
+    return result
+
+
+def load_registered_ids() -> dict[str, set[str]]:
+    """Read stable IDs already registered by the current crawler run."""
+    result: dict[str, set[str]] = defaultdict(set)
+    if not MANIFEST_DB.exists():
+        return result
+    with sqlite3.connect(MANIFEST_DB) as conn:
+        for module, entry_id in conn.execute("SELECT module, entry_id FROM documents"):
+            result[str(module)].add(str(entry_id))
     return result
 
 
@@ -41,6 +54,7 @@ def title_from_text(path: Path, module: str) -> str:
 
 def build_manifest() -> tuple[list[dict], list[str]]:
     ids_by_title = load_ids_by_title()
+    registered_ids = load_registered_ids()
     records: list[dict] = []
     issues: list[str] = []
     for path in sorted(DATA_DIR.glob("*/*.txt")):
@@ -54,6 +68,7 @@ def build_manifest() -> tuple[list[dict], list[str]]:
             for ids in ids_by_title.get(identity_module, {}).values()
             for entry_id in ids
         }
+        known_ids.update(registered_ids.get(module, set()))
         direct_id = stem_id if stem_id in known_ids else None
         candidates = [direct_id] if direct_id else ids_by_title.get(module, {}).get(title, [])
         if source_module == "anecdote" and not direct_id:

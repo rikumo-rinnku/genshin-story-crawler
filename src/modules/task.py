@@ -148,7 +148,12 @@ def parse_interactive_dialogue(components):
     raw = components[0].get("data", "{}")
     try:
         data = json.loads(raw)
-        list_data = data.get("list", [])
+        # Newer pages wrap dialogue trees in ``list``.  Older pages place a
+        # single tree directly at the top level, with root_id/child_ids/
+        # contents.  Support both schemas so legacy task dialogue is retained.
+        list_data = data.get("list")
+        if not isinstance(list_data, list):
+            list_data = [data] if data.get("root_id") and data.get("contents") else []
         all_lines = []
         for item in list_data:
             root_id = item.get("root_id")

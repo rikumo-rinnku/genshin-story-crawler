@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 # ========== 常量 ==========
 WIKI_API_URL = "https://wiki.biligame.com/ys/api.php"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+MAX_DETAIL_RETRIES = 4
 
 
 # ========== 工具函数 ==========
@@ -148,13 +149,22 @@ def get_card_detail(pageid: int) -> Optional[Dict]:
     }
     headers = {"User-Agent": USER_AGENT}
 
-    try:
-        resp = requests.get(WIKI_API_URL, params=params, headers=headers, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as e:
-        logger.error(f"请求名片详情失败 (pageid={pageid}): {e}")
-        return None
+    for attempt in range(1, MAX_DETAIL_RETRIES + 1):
+        try:
+            resp = requests.get(WIKI_API_URL, params=params, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            break
+        except requests.RequestException as exc:
+            if attempt == MAX_DETAIL_RETRIES:
+                logger.error(f"请求名片详情失败 (pageid={pageid}, retries={attempt}): {exc}")
+                return None
+            delay = min(30, 2 ** attempt) + random.uniform(0, 1)
+            logger.warning(
+                f"名片详情请求失败 (pageid={pageid}, attempt={attempt}/{MAX_DETAIL_RETRIES})，"
+                f"{delay:.1f} 秒后重试: {exc}"
+            )
+            time.sleep(delay)
 
     html_content = data.get("parse", {}).get("text", {}).get("*", "")
     if not html_content:
