@@ -12,6 +12,34 @@ LOG_DIR = PROJECT_ROOT / "logs"
 DATA_DIR = PROJECT_ROOT / "data" / "cleaned"
 CONFIG_DIR = PROJECT_ROOT / "config"
 
+STAT_FIELD_LABELS = {
+    "total": "总条目数",
+    "total_tasks": "任务总数",
+    "total_characters": "角色总数",
+    "processed": "本次处理数",
+    "skipped": "已跳过数",
+    "failed": "失败条目",
+    "missing": "缺失条目",
+    "subtasks_saved": "已保存子任务数",
+    "subtasks_empty": "空子任务数",
+    "id": "条目ID",
+    "task_id": "任务ID",
+    "name": "名称",
+    "task_name": "任务名称",
+    "subtask_name": "子任务名称",
+    "reason": "原因",
+    "type": "类型",
+}
+
+
+def translate_stats(value: Any) -> Any:
+    """递归转换报告中的常用统计字段，未知字段保持原样。"""
+    if isinstance(value, dict):
+        return {STAT_FIELD_LABELS.get(str(key), str(key)): translate_stats(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [translate_stats(item) for item in value]
+    return value
+
 
 def configure_logging() -> None:
     """配置一次全项目日志，重复调用不会重复添加处理器。"""
@@ -42,13 +70,16 @@ def get_logger(name: str) -> logging.Logger:
 def save_module_report(module: str, stats: dict[str, Any]) -> Path:
     """补齐公共字段并保存统一的模块报告。"""
     report = {
-        "module": module,
-        "run_time": datetime.now().isoformat(),
-        "total": stats.get("total", stats.get("total_tasks", stats.get("total_characters", 0))),
-        "processed": stats.get("processed", 0),
-        "skipped": stats.get("skipped", 0),
-        "failed": stats.get("failed", []),
-        "details": stats,
+        "模块": module,
+        "运行时间": datetime.now().isoformat(),
+        "汇总": {
+            "总条目数": stats.get("total", stats.get("total_tasks", stats.get("total_characters", 0))),
+            "本次处理数": stats.get("processed", 0),
+            "已跳过数": stats.get("skipped", 0),
+            "失败条目数": len(stats.get("failed", [])),
+        },
+        "失败详情": translate_stats(stats.get("failed", [])),
+        "统计明细": translate_stats(stats),
     }
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     report_path = LOG_DIR / f"{module}_report.json"

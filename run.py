@@ -22,7 +22,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from src.core.runtime import LOG_DIR, configure_logging, save_module_report
+from src.core.runtime import LOG_DIR, configure_logging, save_module_report, translate_stats
 
 # 必须在导入模块前完成配置，避免各模块的历史 basicConfig 抢先接管日志。
 configure_logging()
@@ -225,13 +225,24 @@ def save_report(results: List[Dict]):
     保存详细报告到 JSON 文件。
     """
     report = {
-        "run_time": datetime.now().isoformat(),
-        "total_modules": len(results),
-        "success": sum(1 for r in results if r["status"] == "success"),
-        "failed": sum(1 for r in results if r["status"] == "failed"),
-        "failed_list": [r["name"] for r in results if r["status"] == "failed"],
-        "total_duration": sum(r["duration"] for r in results),
-        "details": results,
+        "运行时间": datetime.now().isoformat(),
+        "模块总数": len(results),
+        "成功模块数": sum(1 for r in results if r["status"] == "success"),
+        "部分完成模块数": sum(1 for r in results if r["status"] == "partial"),
+        "失败模块数": sum(1 for r in results if r["status"] == "failed"),
+        "失败模块": [r["name"] for r in results if r["status"] == "failed"],
+        "总耗时秒": round(sum(r["duration"] for r in results), 2),
+        "模块详情": [
+            {
+                "模块标识": r["key"],
+                "模块名称": r["name"],
+                "状态": {"success": "成功", "partial": "部分完成", "failed": "失败"}[r["status"]],
+                "错误信息": r["error"],
+                "耗时秒": round(r["duration"], 2),
+                "统计": translate_stats(r.get("stats")),
+            }
+            for r in results
+        ],
     }
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)

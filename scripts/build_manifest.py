@@ -29,7 +29,7 @@ def load_ids_by_title() -> dict[str, dict[str, list[str]]]:
 
 
 def load_registered_ids() -> dict[str, set[str]]:
-    """Read stable IDs already registered by the current crawler run."""
+    """读取当前爬虫运行已登记的稳定条目 ID。"""
     result: dict[str, set[str]] = defaultdict(set)
     if not MANIFEST_DB.exists():
         return result
@@ -106,9 +106,8 @@ def build_manifest() -> tuple[list[dict], list[str]]:
             "_canonical_identity": bool(direct_id),
         })
 
-    # When a stable ID copy exists, its legacy source is a retained filesystem
-    # backup rather than a second dataset document.  Exclude that backup from
-    # the manifest before checking genuine identity collisions.
+    # 已存在稳定 ID 副本时，旧文件只是保留在文件系统中的备份，不能作为第二份
+    # 数据集文档。在检查真实身份冲突前，先从 Manifest 中排除这些备份。
     canonical_ids = {
         record["doc_id"]
         for record in records
@@ -124,8 +123,8 @@ def build_manifest() -> tuple[list[dict], list[str]]:
         )
     ]
 
-    # Legacy filenames can map to the same game entry as another text file.
-    # They remain visible for audit, but must not enter a RAG index as ready.
+    # 旧文件名可能与另一份文本映射到同一个游戏条目。它们可保留供审计，
+    # 但不能以 ready 状态进入 RAG 索引。
     by_doc_id: dict[str, list[dict]] = defaultdict(list)
     for record in records:
         if record["status"] == "ready":

@@ -1,7 +1,6 @@
-"""Safely copy unambiguous legacy texts to stable ID-based paths.
+"""将身份明确的旧文本安全复制到稳定 ID 路径。
 
-The command is dry-run by default.  Use --apply to create copies; it never
-removes or overwrites legacy files.
+默认只预览；使用 --apply 才会创建副本。该脚本不会删除或覆盖旧文件。
 """
 from __future__ import annotations
 
@@ -27,7 +26,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     if not args.manifest.exists():
-        print(f"manifest not found: {args.manifest}")
+        print(f"未找到 Manifest：{args.manifest}")
         return 2
 
     copied = skipped = conflicts = review = 0
@@ -46,15 +45,15 @@ def main() -> int:
                 skipped += 1
             else:
                 conflicts += 1
-                print(f"conflict: {target.relative_to(ROOT)}")
+                print(f"内容冲突：{target.relative_to(ROOT)}")
             continue
         copied += 1
         if args.apply:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
 
-    action = "copied" if args.apply else "would copy"
-    print(f"{action}: {copied}; unchanged: {skipped}; conflicts: {conflicts}; review only: {review}")
+    action = "已复制" if args.apply else "预览将复制"
+    print(f"{action}：{copied}；无需处理：{skipped}；内容冲突：{conflicts}；仅待复核：{review}")
     return 1 if conflicts else 0
 
 

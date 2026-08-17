@@ -1,4 +1,4 @@
-"""Repair only task sections whose saved text lacks API-provided dialogue."""
+"""仅修复已保存文本中缺少接口对话内容的任务分段。"""
 from __future__ import annotations
 
 import argparse
@@ -18,7 +18,7 @@ def repair_task(task_id: str) -> tuple[int, int]:
     detail_data = get_task_detail(task_id)
     page = detail_data.get("data", {}).get("page", {}) if detail_data else {}
     if not page:
-        raise RuntimeError(f"task {task_id}: no page data")
+        raise RuntimeError(f"任务 {task_id}：没有页面数据")
 
     main_info = extract_main_info(page)
     module_dict = {str(module.get("id")): module for module in page.get("modules", []) if module.get("id")}
@@ -35,18 +35,18 @@ def repair_task(task_id: str) -> tuple[int, int]:
             skipped += 1
             continue
         save_document(content, "task", task_id, subtask["name"], section_id=section_id)
-        print(f"updated: {path.relative_to(ROOT)}")
+        print(f"已更新：{path.relative_to(ROOT)}")
         updated += 1
     return updated, skipped
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("task_ids", nargs="*", help="official task content IDs to repair")
+    parser.add_argument("task_ids", nargs="*", help="需要修复的官方任务内容 ID")
     parser.add_argument(
         "--all-from-crawled",
         action="store_true",
-        help="scan every currently recorded task and update only missing dialogue sections",
+        help="扫描当前已记录的全部任务，仅更新缺少对话的分段",
     )
     args = parser.parse_args()
     if args.all_from_crawled:
@@ -55,7 +55,7 @@ def main() -> int:
     else:
         task_ids = args.task_ids
     if not task_ids:
-        parser.error("provide task IDs or --all-from-crawled")
+        parser.error("请提供任务 ID，或使用 --all-from-crawled")
 
     total_updated = total_skipped = 0
     failures: list[str] = []
@@ -66,10 +66,10 @@ def main() -> int:
             total_skipped += skipped
         except Exception as exc:
             failures.append(task_id)
-            print(f"failed: {task_id}: {exc}")
+            print(f"处理失败：{task_id}：{exc}")
         if index % 50 == 0 or index == len(task_ids):
-            print(f"progress={index}/{len(task_ids)} updated={total_updated} failed={len(failures)}")
-    print(f"updated={total_updated}; skipped={total_skipped}; failed={len(failures)}")
+            print(f"进度：{index}/{len(task_ids)}；已更新：{total_updated}；失败：{len(failures)}")
+    print(f"完成：已更新 {total_updated}；跳过 {total_skipped}；失败 {len(failures)}")
     return 1 if failures else 0
 
 
