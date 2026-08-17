@@ -37,5 +37,8 @@ Thumbs.db
 config/crawled.json
 config/crawled.*_backup.json
 
+# 个人博客素材：仅本地保留，不随项目仓库发布
+原神剧情爬取笔记/
+
 #临时文件
 temp/
