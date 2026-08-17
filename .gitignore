@@ -13,10 +13,8 @@ __pycache__/
 logs/
 *.log
 
-# 爬取数据（如果你不希望将爬取的数据上传到仓库）
-data/cleaned/
-data/raw/
-# 但 data/ 下的某些目录可能需要保留结构，可以只忽略内容，但简单做法是忽略整个 data/cleaned/
+# 爬取数据与 RAG 发布物（均可由本机运行重建）
+data/
 
 # IDE 配置
 .vscode/
@@ -35,11 +33,9 @@ Thumbs.db
 *.tmp
 *.bak
 
-# 增量记录文件（包含已爬取ID）
+# 增量记录文件（包含已爬取 ID）
 config/crawled.json
 config/crawled.*_backup.json
-data/manifest.jsonl
-data/manifest.sqlite3
 
 #临时文件
 temp/
