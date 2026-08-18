@@ -20,7 +20,7 @@ RAG 使用纯文本正文，不要求 Markdown。每份 `.txt` 必须在数据�
 
 ## 发布规则
 
-1. 旧名称文件首次接入时，先运行 `python scripts/build_manifest.py`，再运行 `python scripts/migrate_legacy_documents.py --apply`；该迁移只复制，不删除旧文件。
+1. 旧名称文件的迁移属于本地一次性维护，不是仓库发布流程的一部分；完成迁移后再运行 `python scripts/build_manifest.py`。
 2. 爬虫结束后运行 `python scripts/build_manifest.py --strict`。
 3. 只有校验通过的数据集才可被 AI 项目建库。
 4. AI 项目以 `manifest.jsonl` 为唯一入口；文本文件仅提供正文。
