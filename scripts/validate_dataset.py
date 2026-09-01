@@ -2,11 +2,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.core.release_metadata import load_version_registry, validate_registry, validate_release
+
 DEFAULT_MANIFEST = ROOT / "data" / "manifest.jsonl"
 
 
@@ -30,6 +37,8 @@ def main() -> int:
         records.append(record)
 
     ids = Counter(record.get("doc_id") for record in records)
+    registry_errors = validate_registry(load_version_registry())
+    errors.extend(f"版本规则配置无效：{error}" for error in registry_errors)
     errors.extend(f"重复 doc_id：{doc_id}" for doc_id, count in ids.items() if doc_id and count > 1)
     ready = [record for record in records if record.get("status") == "ready"]
     review = [record for record in records if record.get("status") != "ready"]
@@ -42,6 +51,17 @@ def main() -> int:
         path = ROOT / record["path"]
         if not path.exists() or not path.read_text(encoding="utf-8").strip():
             errors.append(f"{record['doc_id']}: 正文不存在或为空")
+            continue
+        expected_hash = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+        if record.get("content_hash") != expected_hash:
+            errors.append(f"{record['doc_id']}: content_hash 与正文不一致")
+    for record in records:
+        release = record.get("release")
+        if not isinstance(release, dict):
+            errors.append(f"{record.get('doc_id')}: 缺少 release 对象")
+            continue
+        for error in validate_release(release):
+            errors.append(f"{record.get('doc_id')}: release 元数据无效：{error}")
 
     print(f"文档总数：{len(records)}；可发布：{len(ready)}；待复核：{len(review)}；错误：{len(errors)}")
     for module, count in sorted(Counter(record.get("module", "unknown") for record in ready).items()):

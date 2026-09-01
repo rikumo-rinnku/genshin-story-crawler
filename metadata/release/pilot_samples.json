@@ -1,0 +1,54 @@
+{
+  "samples": [
+    {
+      "doc_id": "task:509511:771",
+      "category": "archon_task",
+      "review_note": "版本号直接来自官方词条页。"
+    },
+    {
+      "doc_id": "task:509534:771",
+      "category": "archon_task",
+      "review_note": "版本号直接来自官方词条页。"
+    },
+    {
+      "doc_id": "task:509539:771",
+      "category": "limited_event",
+      "review_note": "版本号直接来自官方词条页。"
+    },
+    {
+      "doc_id": "task:509641:771",
+      "category": "limited_event",
+      "review_note": "版本号直接来自官方词条页。"
+    },
+    {
+      "doc_id": "character:61",
+      "category": "character",
+      "review_note": "无可靠的首次实装版本依据，保持版本未知。"
+    },
+    {
+      "doc_id": "weapon:127",
+      "category": "weapon",
+      "review_note": "无可靠的首次实装版本依据，保持版本未知。"
+    },
+    {
+      "doc_id": "map_text:506567",
+      "category": "location_text",
+      "review_note": "首次版本未知，避免根据词条编辑时间倒推。"
+    },
+    {
+      "doc_id": "npc:3961",
+      "category": "npc",
+      "review_note": "NPC 正文同时包含 2.6 与后续活动条件，无法按稳定 section_id 可靠拆分；不为整篇填写单一版本。"
+    },
+    {
+      "doc_id": "task:506587:771",
+      "category": "story_arc",
+      "review_note": "已人工确认：空月之歌属 6.0 大版本，月之一对应 6.1。"
+    },
+    {
+      "doc_id": "animal:1143",
+      "category": "unknown_release",
+      "review_note": "长期百科资料缺少可靠首次版本资料，未知状态是合法结果。"
+    }
+  ]
+}

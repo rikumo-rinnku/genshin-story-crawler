@@ -7,6 +7,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from src.core.release_metadata import load_version_registry, resolve_release, validate_registry
 from src.core.runtime import DATA_DIR, PROJECT_ROOT
 
 MANIFEST_DB = PROJECT_ROOT / "data" / "manifest.sqlite3"
@@ -29,11 +30,29 @@ def save_document(content: str, module: str, entry_id: str, title: str, *, secti
 
 
 def publish_manifest() -> Path:
-    """从事务性登记表导出 AI 项目可直接读取的 JSONL。"""
+    """从事务性登记表导出带 release 元数据的 JSONL。"""
     if not MANIFEST_DB.exists():
         return MANIFEST_FILE
     with sqlite3.connect(MANIFEST_DB) as conn:
         columns = [row[1] for row in conn.execute("PRAGMA table_info(documents)")]
         rows = [dict(zip(columns, row)) for row in conn.execute("SELECT * FROM documents ORDER BY doc_id")]
-    MANIFEST_FILE.write_text("".join(json.dumps({**row, "status": "ready"}, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
+    registry = load_version_registry()
+    registry_errors = validate_registry(registry)
+    if registry_errors:
+        raise ValueError(f"版本规则配置校验失败：{'；'.join(registry_errors)}")
+    records = []
+    for row in rows:
+        source_type = row.get("source_type", "official_hoyowiki")
+        entry_id = row.get("entry_id")
+        source_url = None
+        if entry_id and source_type == "official_hoyowiki":
+            source_url = (
+                "https://act-api-takumi-static.mihoyo.com/hoyowiki/genshin/wapi/entry_page"
+                f"?app_sn=ys_obc&entry_page_id={entry_id}&lang=zh-cn"
+            )
+        release, errors = resolve_release(row["doc_id"], registry)
+        if errors:
+            raise ValueError(f"release 元数据校验失败：{row['doc_id']}：{'；'.join(errors)}")
+        records.append({**row, "source_url": source_url, "status": "ready", "release": release})
+    MANIFEST_FILE.write_text("".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records), encoding="utf-8")
     return MANIFEST_FILE
