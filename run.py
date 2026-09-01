@@ -39,6 +39,7 @@ from src.modules import (
     enemy,
     food,
     furnishing,
+    gray_eye,
     item,
     map_text,
     namecard,
@@ -74,6 +75,7 @@ MODULES: List[Tuple[str, object, str]] = [
     ("幻想真境剧诗", phantom_theater, "phantom_theater"),
     ("名片", namecard, "namecard"),
     ("装扮", outfit, "outfit"),
+    ("灰眸", gray_eye, "gray_eye"),
 ]
 
 

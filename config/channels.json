@@ -76,5 +76,9 @@
   "outfit": {
     "channel_id": 211,
     "name": "装扮"
-}
+  },
+  "gray_eye": {
+    "channel_id": 278,
+    "name": "灰眸"
+  }
 }
