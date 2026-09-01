@@ -15,7 +15,7 @@ from typing import Dict, List, Any, Optional
 from bs4 import BeautifulSoup  
 
 from src.core.client import get
-from src.core.parser import clean_html_to_text
+from src.core.parser import clean_html_to_inline_text, clean_html_to_text
 from src.core.config_loader import get_channel_id
 from src.core.storage import is_crawled, mark_crawled
 from src.core.dataset import save_document
@@ -239,7 +239,7 @@ def parse_npc_detail(page_data: Dict) -> Dict:
                     key = attr.get("key", "")
                     values = attr.get("value", [])
                     if key and values:
-                        cleaned = [clean_html_to_text(v) for v in values if v]
+                        cleaned = [clean_html_to_inline_text(v) for v in values if v]
                         if cleaned:
                             parts.append(f"{key}：{'；'.join(cleaned)}")
                 extra_attr_list = data.get("extra_attr", [])
@@ -247,7 +247,7 @@ def parse_npc_detail(page_data: Dict) -> Dict:
                     key = attr.get("key", "")
                     values = attr.get("value", [])
                     if key and values:
-                        cleaned = [clean_html_to_text(v) for v in values if v]
+                        cleaned = [clean_html_to_inline_text(v) for v in values if v]
                         if cleaned:
                             parts.append(f"{key}：{'；'.join(cleaned)}")
                 if parts:
@@ -261,7 +261,7 @@ def parse_npc_detail(page_data: Dict) -> Dict:
                     key = entry.get("key", "")
                     values = entry.get("value", [])
                     if values:
-                        cleaned_values = [clean_html_to_text(v) for v in values if v]
+                        cleaned_values = [clean_html_to_inline_text(v) for v in values if v]
                         if cleaned_values:
                             parts.append(f"{key}：{'；'.join(cleaned_values)}")
                 if parts:
